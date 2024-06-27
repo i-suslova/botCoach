@@ -1,4 +1,4 @@
-const connectDb = require('../utils/db');
+const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 const { setCommands } = require('./setCommands');
 
 let categories = ['💼 Работа', '🏠 Личное', '💪 Здоровье'];
@@ -16,24 +16,20 @@ const createEntry = async (ctx) => {
 
 const viewEntries = async (ctx) => {
   console.log('viewEntries called');
-  const db = connectDb();
   const userId = ctx.from.id;
 
-  db.all(`SELECT * FROM entries WHERE user_id = ?`, [userId], (err, rows) => {
-    if (err) {
-      console.error(err);
-      ctx.reply('Произошла ошибка при чтении записей.');
-      return;
-    }
-
-    if (rows.length === 0) {
+  try {
+    const res = await db.query('SELECT * FROM entries WHERE user_id = $1', [userId]);
+    if (res.rows.length === 0) {
       ctx.reply('Ваш дневник пуст.');
     } else {
-      const entries = rows.map((row, index) => `${index + 1}. ${row.text} ( ${row.category}, Запись была сделана: ${row.date})`).join('\n\n');
+      const entries = res.rows.map((row, index) => `${index + 1}. ${row.text} (${row.category}, Запись была сделана: ${row.date})`).join('\n\n');
       ctx.reply(`Ваши записи:\n\n${entries}`);
     }
-    db.close();
-  });
+  } catch (err) {
+    console.error(err);
+    ctx.reply('Произошла ошибка при чтении записей.');
+  }
 
   await setCommands(ctx);
 };
@@ -58,20 +54,14 @@ const handleEditCallbackQueries = async (ctx) => {
     if (data.startsWith('edit_category_')) {
       const category = data.split('_')[2];
       console.log(`Editing entries in category: ${category}`);
-      const db = connectDb();
       const userId = ctx.from.id;
 
-      db.all(`SELECT * FROM entries WHERE user_id = ? AND category = ?`, [userId, category], async (err, rows) => {
-        if (err) {
-          console.error(err);
-          await ctx.reply('Произошла ошибка при чтении записей.');
-          return;
-        }
-
-        if (rows.length === 0) {
+      try {
+        const res = await db.query('SELECT * FROM entries WHERE user_id = $1 AND category = $2', [userId, category]);
+        if (res.rows.length === 0) {
           await ctx.reply('В выбранной категории нет записей.');
         } else {
-          const entries = rows.map((row, index) => ({
+          const entries = res.rows.map((row, index) => ({
             text: `${index + 1}. ${row.text} (Дата и время: ${row.date})`,
             callback_data: `edit_${row.id}`
           }));
@@ -82,24 +72,23 @@ const handleEditCallbackQueries = async (ctx) => {
           });
           ctx.session.awaitingEdit = true;
         }
-        db.close();
-      });
+      } catch (err) {
+        console.error(err);
+        await ctx.reply('Произошла ошибка при чтении записей.');
+      }
 
       await setCommands(ctx);
     } else if (data.startsWith('edit_')) {
       const entryId = parseInt(data.split('_')[1]);
       console.log(`Editing entry ID: ${entryId}`);
-      const db = connectDb();
       const userId = ctx.from.id;
 
-      db.get(`SELECT * FROM entries WHERE id = ? AND user_id = ?`, [entryId, userId], async (err, row) => {
-        if (err) {
-          console.error(err);
-          await ctx.reply('Произошла ошибка при чтении записи.');
-          return;
-        }
-
-        if (row) {
+      try {
+        const res = await db.query('SELECT * FROM entries WHERE id = $1 AND user_id = $2', [entryId, userId]);
+        if (res.rows.length === 0) {
+          await ctx.reply('Ошибка: Не удалось найти запись для редактирования.');
+        } else {
+          const row = res.rows[0];
           console.log(`Found entry for editing: ${row.text}`);
           ctx.session.editId = entryId;
           ctx.session.awaitingEdit = true;
@@ -109,11 +98,11 @@ const handleEditCallbackQueries = async (ctx) => {
               force_reply: true
             }
           });
-        } else {
-          await ctx.reply('Ошибка: Не удалось найти запись для редактирования.');
         }
-        db.close();
-      });
+      } catch (err) {
+        console.error(err);
+        await ctx.reply('Произошла ошибка при чтении записи.');
+      }
 
       await setCommands(ctx);
     }
@@ -123,5 +112,5 @@ const handleEditCallbackQueries = async (ctx) => {
     await setCommands(ctx);
   }
 };
-module.exports = { createEntry, viewEntries, editEntry, handleEditCallbackQueries };
 
+module.exports = { createEntry, viewEntries, editEntry, handleEditCallbackQueries };

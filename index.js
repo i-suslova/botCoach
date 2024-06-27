@@ -68,3 +68,4 @@ setCommands(bot);
 
 bot.start();
 console.log("Bot started.");
+module.exports = { bot };
