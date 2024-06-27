@@ -14,6 +14,7 @@ const createEntry = async (ctx) => {
   await setCommands(ctx);
 };
 
+
 const viewEntries = async (ctx) => {
   console.log('viewEntries called');
   const db = connectDb();
@@ -70,6 +71,7 @@ const editEntry = async (ctx) => {
   await setCommands(ctx);
 };
 
+
 const handleEditCallbackQueries = async (ctx) => {
   try {
     console.log('handleEditCallbackQueries called');
@@ -82,10 +84,10 @@ const handleEditCallbackQueries = async (ctx) => {
       const db = connectDb();
       const userId = ctx.from.id;
 
-      db.get(`SELECT * FROM entries WHERE id = ? AND user_id = ?`, [entryId, userId], (err, row) => {
+      db.get(`SELECT * FROM entries WHERE id = ? AND user_id = ?`, [entryId, userId], async (err, row) => {
         if (err) {
-          console.error(err);
-          ctx.reply('Произошла ошибка при чтении записи.');
+          console.error('Database error:', err);
+          await ctx.reply('Произошла ошибка при чтении записи.');
           return;
         }
 
@@ -93,9 +95,15 @@ const handleEditCallbackQueries = async (ctx) => {
           console.log(`Found entry for editing: ${row.text}`);
           ctx.session.editId = entryId;
           ctx.session.awaitingEdit = true;
-          ctx.reply(`Введите новую версию записи:\n\n${row.text}`);
+          ctx.session.editingText = row.text;  // Сохраняем текст записи для редактирования
+          await ctx.reply(`Редактирование записи:\n\n${row.text}`, {
+            reply_markup: {
+              force_reply: true
+            }
+          });
+          console.log('Message with force_reply sent');
         } else {
-          ctx.reply('Ошибка: Не удалось найти запись для редактирования.');
+          await ctx.reply('Ошибка: Не удалось найти запись для редактирования.');
         }
         db.close();
       });
@@ -104,9 +112,10 @@ const handleEditCallbackQueries = async (ctx) => {
     }
   } catch (error) {
     console.error('Error in handleEditCallbackQueries:', error);
-    ctx.reply('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте снова.');
+    await ctx.reply('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте снова.');
     await setCommands(ctx);
   }
 };
 
 module.exports = { createEntry, viewEntries, editEntry, handleEditCallbackQueries };
+
