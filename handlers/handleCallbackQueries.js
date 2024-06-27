@@ -8,7 +8,7 @@ const handleCallbackQueries = async (ctx) => {
     const data = ctx.callbackQuery.data;
 
     if (data === 'create_entry') {
-      await ctx.reply('Выберите категорию записи:', {
+      await ctx.reply('Выберите нужную страницу:', {
         reply_markup: {
           inline_keyboard: categories.map(category => [{ text: category, callback_data: `category_${category}` }])
         }
@@ -37,7 +37,7 @@ const handleCallbackQueries = async (ctx) => {
           ctx.reply('Ваш дневник пуст.');
         } else {
           const entries = rows.map((row, index) => ({
-            text: `${index + 1}. ${row.text} (Категория: ${row.category}, Дата и время: ${row.date})`,
+            text: `${index + 1}. ${row.text} ( ${row.category}, Запись была сделана: ${row.date})`,
             callback_data: `edit_${row.id}`
           }));
           ctx.reply('Ваши записи:', {

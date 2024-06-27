@@ -2,9 +2,11 @@ require('dotenv').config();
 const { Bot, GrammyError, HttpError } = require('grammy');
 const { useSession } = require('./utils/session');
 const startHandler = require('./handlers/startHandler');
-const { diaryHandler, handleCallbackQueries, handleMessages, createEntry, viewEntries, editEntry, handleEditCallbackQueries } = require('./handlers/diaryHandler');
+const { diaryHandler, handleCallbackQueries, handleMessages, viewEntries, editEntry, handleEditCallbackQueries } = require('./handlers/diaryHandler');
 const { setCommands } = require('./handlers/setCommands');
+const { getQuoteInEnglish, getQuoteInRussian } = require('./utils/quoteAPI');
 
+console.log("Starting bot...");
 const bot = new Bot(process.env.BOT_API_KEY);
 
 // Use session middleware
@@ -13,18 +15,38 @@ bot.use(useSession);
 // Register handlers
 bot.command('start', startHandler);
 bot.command('diary', diaryHandler);
-bot.command('create', createEntry);
 bot.command('view', viewEntries);
-bot.command('edit', editEntry); // Новая команда для редактирования
+bot.command('edit', editEntry); 
+
+// Command to send random quote in English
+const sendRandomQuoteInEnglish = async (ctx) => {
+  console.log("Fetching quote in English...");
+  const quote = await getQuoteInEnglish();
+  await ctx.reply(quote);
+};
+
+// Command to send random quote in Russian
+const sendRandomQuoteInRussian = async (ctx) => {
+  console.log("Fetching quote in Russian...");
+  const quote = await getQuoteInRussian();
+  await ctx.reply(quote);
+};
+
+bot.command('quoteen', sendRandomQuoteInEnglish);
+bot.command('quoteru', sendRandomQuoteInRussian);
 
 // Use diary menu
 bot.on('callback_query:data', async (ctx) => {
+  console.log("Handling callback query...");
   await handleEditCallbackQueries(ctx);
   await handleCallbackQueries(ctx);
 });
 
 // Handle messages
-bot.on('message', handleMessages);
+bot.on('message', (ctx) => {
+  console.log("Handling message...");
+  handleMessages(ctx);
+});
 
 // Error handling
 bot.catch((err) => {
@@ -45,3 +67,4 @@ bot.catch((err) => {
 setCommands(bot);
 
 bot.start();
+console.log("Bot started.");

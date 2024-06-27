@@ -1,8 +1,9 @@
 const connectDb = require('../utils/db');
 const { setCommands } = require('./setCommands');
+const { getRandomMorningGreeting } = require('../utils/morningGreetings');
 
 const handleMessages = async (ctx) => {
-  console.log('handleMessages called')
+  console.log('handleMessages called');
   const db = connectDb();
 
   try {
@@ -25,7 +26,7 @@ const handleMessages = async (ctx) => {
       // Сохранение записи в базу данных
       await db.run(`INSERT INTO entries (user_id, text, category, date) VALUES (?, ?, ?, ?)`, [userId, text, category, timestamp], (err) => {
         if (err) {
-          console.error('Database error:', err);
+          console.error(err);
           ctx.reply('Произошла ошибка при сохранении записи.');
           return;
         }
@@ -36,36 +37,56 @@ const handleMessages = async (ctx) => {
       ctx.session.creatingEntry = false;
       ctx.session.category = null;
       await setCommands(ctx);
-    } else if (ctx.session.awaitingEdit) {
-      if (ctx.message.reply_to_message && ctx.message.reply_to_message.text.includes('Редактирование записи:')) {
-        console.log(`Editing entry ID: ${ctx.session.editId}`);
-        const entryId = ctx.session.editId;
-        const newText = ctx.message.text;
+    } else if (ctx.session.awaitingEdit && ctx.message.reply_to_message && ctx.message.reply_to_message.text.includes('Редактирование записи:')) {
+      console.log(`Editing entry ID: ${ctx.session.editId}`);
+      const entryId = ctx.session.editId;
+      const newText = ctx.message.text;
 
-        // Обновление записи в базе данных
-        await db.run(`UPDATE entries SET text = ? WHERE id = ?`, [newText, entryId], (err) => {
-          if (err) {
-            console.error('Database error:', err);
-            ctx.reply('Произошла ошибка при обновлении записи.');
-            return;
-          }
+      // Обновление записи в базе данных
+      await db.run(`UPDATE entries SET text = ? WHERE id = ?`, [newText, entryId], (err) => {
+        if (err) {
+          console.error(err);
+          ctx.reply('Произошла ошибка при обновлении записи.');
+          return;
+        }
 
-          ctx.reply(`Запись обновлена:\n\n${newText}`);
-        });
+        ctx.reply(`Запись обновлена:\n\n${newText}`);
+      });
 
-        ctx.session.awaitingEdit = false;
-        ctx.session.editId = undefined;
-        ctx.session.editingText = undefined;
-        console.log('Entry updated');
-        await setCommands(ctx);
-      } else {
-        console.log('Not a reply to the expected message or not in edit mode');
-        await ctx.reply('Неизвестная команда. Используйте /diary для работы с дневником.');
-        await setCommands(ctx);
-      }
+      ctx.session.awaitingEdit = false;
+      ctx.session.editId = undefined;
+      ctx.session.editingText = undefined;
+      await setCommands(ctx);
     } else {
-      console.log('Not in any expected state');
-      await ctx.reply('Неизвестная команда. Используйте /diary для работы с дневником.');
+      // Обработка ключевых слов
+      const messageText = ctx.message.text.toLowerCase();
+
+      if (messageText.includes('спасибо')) {
+        await ctx.reply('Пожалуйста! Рад помочь.');
+        // Отправка стикера как ответ
+        await ctx.replyWithSticker('CAACAgIAAxkBAAEMYq1mfasnI9iEij2GAjLrickLwnGqGgACxgEAAhZCawpKI9T0ydt5RzUE'); 
+      } else if (/привет|доброе утро|здравствуйте|приветствую вас/i.test(messageText)) {
+        const now = new Date();
+        const hours = now.getHours();
+
+        if (hours < 12) {
+          const greeting = getRandomMorningGreeting();
+          await ctx.reply(greeting);
+        } else {
+          await ctx.reply('Хорошего дня!');
+        }
+
+        // } else if  (
+        //   messageText.includes('привет') || 
+        //   messageText.includes('доброе утро') || 
+        //   messageText.includes('здравствуй') || 
+        //   messageText.includes('приветствую вас')
+        // ) {
+        // await ctx.reply('Привет! Как я могу помочь вам сегодня?');
+      } else {
+        await ctx.reply('Извините, я не распознал эту команду. Пожалуйста, выберите действие из МЕНЮ.');
+      }
+
       await setCommands(ctx);
     }
   } catch (error) {
@@ -77,12 +98,3 @@ const handleMessages = async (ctx) => {
 };
 
 module.exports = { handleMessages };
-
-
-
-
-
-
-
-
-
