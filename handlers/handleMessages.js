@@ -1,10 +1,9 @@
-const connectDb = require('../utils/db');
+const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 const { setCommands } = require('./setCommands');
 const { getRandomMorningGreeting } = require('../utils/morningGreetings');
 
 const handleMessages = async (ctx) => {
   console.log('handleMessages called');
-  const db = connectDb();
 
   try {
     if (ctx.session.awaitingName) {
@@ -12,7 +11,7 @@ const handleMessages = async (ctx) => {
       const name = ctx.message.text;
 
       // Сохранение имени пользователя в базу данных
-      await db.run(`UPDATE users SET name = ? WHERE user_id = ?`, [name, userId]);
+      await db.query('UPDATE users SET name = $1 WHERE user_id = $2', [name, userId]);
       ctx.session.awaitingName = false;
       await ctx.reply(`Спасибо, ${name}! Я запомнил вас. Можете начинать записывать свои мысли и цели.`);
       await setCommands(ctx);
@@ -24,15 +23,8 @@ const handleMessages = async (ctx) => {
       const category = ctx.session.category || 'Без категории';
 
       // Сохранение записи в базу данных
-      await db.run(`INSERT INTO entries (user_id, text, category, date) VALUES (?, ?, ?, ?)`, [userId, text, category, timestamp], (err) => {
-        if (err) {
-          console.error(err);
-          ctx.reply('Произошла ошибка при сохранении записи.');
-          return;
-        }
-
-        ctx.reply(`Запись добавлена в дневник:\n\n${text}\n\nКатегория: ${category}\nДата и время: ${timestamp}`);
-      });
+      await db.query('INSERT INTO entries (user_id, text, category, date) VALUES ($1, $2, $3, $4)', [userId, text, category, timestamp]);
+      ctx.reply(`Запись добавлена в дневник:\n\n${text}\n\nКатегория: ${category}\nДата и время: ${timestamp}`);
 
       ctx.session.creatingEntry = false;
       ctx.session.category = null;
@@ -43,15 +35,8 @@ const handleMessages = async (ctx) => {
       const newText = ctx.message.text;
 
       // Обновление записи в базе данных
-      await db.run(`UPDATE entries SET text = ? WHERE id = ?`, [newText, entryId], (err) => {
-        if (err) {
-          console.error(err);
-          ctx.reply('Произошла ошибка при обновлении записи.');
-          return;
-        }
-
-        ctx.reply(`Запись обновлена:\n\n${newText}`);
-      });
+      await db.query('UPDATE entries SET text = $1 WHERE id = $2', [newText, entryId]);
+      ctx.reply(`Запись обновлена:\n\n${newText}`);
 
       ctx.session.awaitingEdit = false;
       ctx.session.editId = undefined;
@@ -75,14 +60,6 @@ const handleMessages = async (ctx) => {
         } else {
           await ctx.reply('Хорошего дня!');
         }
-
-        // } else if  (
-        //   messageText.includes('привет') || 
-        //   messageText.includes('доброе утро') || 
-        //   messageText.includes('здравствуй') || 
-        //   messageText.includes('приветствую вас')
-        // ) {
-        // await ctx.reply('Привет! Как я могу помочь вам сегодня?');
       } else {
         await ctx.reply('Извините, я не распознал эту команду. Пожалуйста, выберите действие из МЕНЮ.');
       }
@@ -92,8 +69,6 @@ const handleMessages = async (ctx) => {
   } catch (error) {
     console.error('Error in handleMessages:', error);
     ctx.reply('Произошла ошибка при обработке сообщения. Пожалуйста, попробуйте снова.');
-  } finally {
-    db.close();
   }
 };
 
