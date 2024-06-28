@@ -1,3 +1,4 @@
+const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 const { diaryMenu } = require('../menus/diaryMenu');
 const { setCommands } = require('./setCommands');
 const { handleMessages } = require('./handleMessages');

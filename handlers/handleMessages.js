@@ -11,7 +11,13 @@ const handleMessages = async (ctx) => {
       const name = ctx.message.text;
 
       // Сохранение имени пользователя в базу данных
-      await db.query('UPDATE users SET name = $1 WHERE user_id = $2', [name, userId]);
+      const userRes = await db.query('SELECT user_id FROM users WHERE telegram_id = $1', [userId]);
+      if (userRes.rows.length === 0) {
+        await db.query('INSERT INTO users (telegram_id, name) VALUES ($1, $2)', [userId, name]);
+      } else {
+        await db.query('UPDATE users SET name = $1 WHERE user_id = $2', [name, userRes.rows[0].user_id]);
+      }
+
       ctx.session.awaitingName = false;
       await ctx.reply(`Спасибо, ${name}! Я запомнил вас. Можете начинать записывать свои мысли и цели.`);
       await setCommands(ctx);
@@ -23,7 +29,9 @@ const handleMessages = async (ctx) => {
       const category = ctx.session.category || 'Без категории';
 
       // Сохранение записи в базу данных
-      await db.query('INSERT INTO entries (user_id, text, category, date) VALUES ($1, $2, $3, $4)', [userId, text, category, timestamp]);
+      const userRes = await db.query('SELECT user_id FROM users WHERE telegram_id = $1', [userId]);
+      const user_id = userRes.rows[0].user_id;
+      await db.query('INSERT INTO entries (user_id, text, category, date) VALUES ($1, $2, $3, $4)', [user_id, text, category, timestamp]);
       ctx.reply(`Запись добавлена в дневник:\n\n${text}\n\nКатегория: ${category}\nДата и время: ${timestamp}`);
 
       ctx.session.creatingEntry = false;
@@ -35,7 +43,7 @@ const handleMessages = async (ctx) => {
       const newText = ctx.message.text;
 
       // Обновление записи в базе данных
-      await db.query('UPDATE entries SET text = $1 WHERE id = $2', [newText, entryId]);
+      await db.query('UPDATE entries SET text = $1 WHERE entry_id = $2', [newText, entryId]);
       ctx.reply(`Запись обновлена:\n\n${newText}`);
 
       ctx.session.awaitingEdit = false;

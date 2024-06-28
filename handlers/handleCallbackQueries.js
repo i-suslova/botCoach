@@ -1,5 +1,5 @@
 const { setCommands } = require('./setCommands');
-const connectDb = require('../utils/db'); // Добавляем импорт
+const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 
 let categories = ['💼 Работа', '🏠 Личное', '💪 Здоровье'];
 
@@ -23,22 +23,25 @@ const handleCallbackQueries = async (ctx) => {
       ctx.session.creatingEntry = true;
       await setCommands(ctx);
     } else if (data === 'view_entries') {
-      const db = connectDb();
       const userId = ctx.from.id;
+      console.log(`viewEntries userId: ${userId}`);
 
-      db.all(`SELECT * FROM entries WHERE user_id = ?`, [userId], (err, rows) => {
-        if (err) {
-          console.error(err);
-          ctx.reply('Произошла ошибка при чтении записей.');
+      try {
+        const userRes = await db.query('SELECT user_id FROM users WHERE telegram_id = $1', [userId]);
+        if (userRes.rows.length === 0) {
+          ctx.reply('Пользователь не найден в базе данных.');
           return;
         }
+        const user_id = userRes.rows[0].user_id;
+        console.log(`viewEntries user_id: ${user_id}`);
 
-        if (rows.length === 0) {
+        const res = await db.query('SELECT * FROM entries WHERE user_id = $1', [user_id]);
+        if (res.rows.length === 0) {
           ctx.reply('Ваш дневник пуст.');
         } else {
-          const entries = rows.map((row, index) => ({
-            text: `${index + 1}. ${row.text} ( ${row.category}, Запись была сделана: ${row.date})`,
-            callback_data: `edit_${row.id}`
+          const entries = res.rows.map((row, index) => ({
+            text: `${index + 1}. ${row.text} (${row.category}, Запись была сделана: ${row.date})`,
+            callback_data: `edit_${row.entry_id}`
           }));
           ctx.reply('Ваши записи:', {
             reply_markup: {
@@ -46,8 +49,10 @@ const handleCallbackQueries = async (ctx) => {
             }
           });
         }
-        db.close();
-      });
+      } catch (err) {
+        console.error('Error in handleCallbackQueries (view_entries):', err);
+        ctx.reply('Произошла ошибка при чтении записей.');
+      }
 
       await setCommands(ctx);
     }
