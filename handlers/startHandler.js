@@ -10,10 +10,10 @@ const startHandler = async (ctx) => {
     if (res.rows.length === 0) {
       // Пользователь не найден, запрос имени
       ctx.session.awaitingName = true;
-      await ctx.reply('Привет! Как вас зовут?');
+      await ctx.reply('Приветствую! Как вас зовут?');
     } else {
       const userName = res.rows[0].name;
-      await ctx.reply(`Привет, ${userName}! Чем могу помочь?`);
+      await ctx.reply(`Приветствую, ${userName}! Чем могу помочь?`);
     }
   } catch (error) {
     console.error('Error in startHandler:', error);

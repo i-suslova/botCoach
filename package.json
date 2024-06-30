@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start-db": "C:\\Users\\Isus\\dev\\botCoach\\start_postgresql.bat",
+    "stop-db": "C:\\Users\\Isus\\dev\\botCoach\\stop_postgresql.bat",
     "start": "nodemon index.js"
   },
   "keywords": [],

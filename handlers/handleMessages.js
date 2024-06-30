@@ -1,6 +1,7 @@
 const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 const { setCommands } = require('./setCommands');
 const { getRandomMorningGreeting } = require('../utils/morningGreetings');
+const { getRandomAnswerPlease } = require('../utils/answerPlease');
 
 const handleMessages = async (ctx) => {
   console.log('handleMessages called');
@@ -19,7 +20,7 @@ const handleMessages = async (ctx) => {
       }
 
       ctx.session.awaitingName = false;
-      await ctx.reply(`Спасибо, ${name}! Я запомнил вас. Можете начинать записывать свои мысли и цели.`);
+      await ctx.reply(`Спасибо, ${name}! Очень приятно. Я запомнил вас. Можете начинать записывать свои мысли и цели.`);
       await setCommands(ctx);
     } else if (ctx.session.creatingEntry) {
       const now = new Date();
@@ -44,7 +45,7 @@ const handleMessages = async (ctx) => {
 
       // Обновление записи в базе данных
       await db.query('UPDATE entries SET text = $1 WHERE entry_id = $2', [newText, entryId]);
-      ctx.reply(`Запись обновлена:\n\n${newText}`);
+      ctx.reply(`Замечательно, запись обновлена:\n\n${newText}`);
 
       ctx.session.awaitingEdit = false;
       ctx.session.editId = undefined;
@@ -55,18 +56,26 @@ const handleMessages = async (ctx) => {
       const messageText = ctx.message.text.toLowerCase();
 
       if (messageText.includes('спасибо')) {
-        await ctx.reply('Пожалуйста! Рад помочь.');
-        // Отправка стикера как ответ
-        await ctx.replyWithSticker('CAACAgIAAxkBAAEMYq1mfasnI9iEij2GAjLrickLwnGqGgACxgEAAhZCawpKI9T0ydt5RzUE'); 
-      } else if (/привет|доброе утро|здравствуйте|приветствую вас/i.test(messageText)) {
+        const answerPl = getRandomAnswerPlease();
+        if (typeof answerPl === 'string') {
+          await ctx.reply(answerPl);
+        } else if (answerPl.type === 'sticker') {
+          await ctx.replyWithSticker(answerPl.id);
+        }
+      } else if (/привет|доброе утро|здравствуйте|здравствуй|приветствую вас/i.test(messageText)) {
         const now = new Date();
         const hours = now.getHours();
 
-        if (hours < 12) {
-          const greeting = getRandomMorningGreeting();
+        const userId = ctx.from.id;
+        const userRes = await db.query('SELECT name FROM users WHERE telegram_id = $1', [userId]);
+        const userName = userRes.rows[0].name;
+
+          if (hours < 12 && hours >= 4) {
+          // const greeting = getRandomMorningGreeting();
+          const greeting = getRandomMorningGreeting(userName);
           await ctx.reply(greeting);
         } else {
-          await ctx.reply('Хорошего дня!');
+          await ctx.reply(`Приветствую, ${userName}! Чем могу помочь?`);
         }
       } else {
         await ctx.reply('Извините, я не распознал эту команду. Пожалуйста, выберите действие из МЕНЮ.');

@@ -1,4 +1,5 @@
-const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
+const db = require('../utils/dbPostgres');
+const { formatDate } = require('../utils/monthNames');
 const { setCommands } = require('./setCommands');
 
 let categories = ['💼 Работа', '🏠 Личное', '💪 Здоровье'];
@@ -6,7 +7,7 @@ let categories = ['💼 Работа', '🏠 Личное', '💪 Здоровь
 const createEntry = async (ctx) => {
   console.log('createEntry called');
   try {
-    await ctx.reply('Выберите нужную страницу:', {
+    await ctx.reply('Выберите нужную страницу и запишите свои планы:', {
       reply_markup: {
         inline_keyboard: categories.map(category => [{ text: category, callback_data: `category_${category}` }])
       }
@@ -37,7 +38,7 @@ const viewEntries = async (ctx) => {
     if (res.rows.length === 0) {
       ctx.reply('Ваш дневник пуст.');
     } else {
-      const entries = res.rows.map((row, index) => `${index + 1}. ${row.text} (${row.category}, Запись была сделана: ${row.date})`).join('\n\n');
+      const entries = res.rows.map((row, index) => `${index + 1}. ${row.text} (${row.category}, ⏳ ${formatDate(row.date)})`).join('\n\n');
       ctx.reply(`Ваши записи:\n\n${entries}`);
     }
   } catch (err) {
@@ -88,10 +89,10 @@ const handleEditCallbackQueries = async (ctx) => {
           await ctx.reply('В выбранной категории нет записей.');
         } else {
           const entries = res.rows.map((row, index) => ({
-            text: `${index + 1}. ${row.text} (Дата и время: ${row.date})`,
+            text: `✍️ ${index + 1}. ${row.text} ( Дата и время: ${formatDate(row.date)})`,
             callback_data: `edit_${row.entry_id}`
           }));
-          await ctx.reply('Выберите запись для редактирования:', {
+          await ctx.reply('Выберите запись для редактирования и нажмите на неё, чтобы изменить:', {
             reply_markup: {
               inline_keyboard: entries.map(entry => [{ text: entry.text, callback_data: entry.callback_data }])
             }

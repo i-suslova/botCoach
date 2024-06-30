@@ -1,15 +1,15 @@
 const axios = require('axios');
 
-// Получение цитаты на английском языке
-const getQuoteInEnglish = async () => {
-  try {
-    const response = await axios.get('https://api.quotable.io/random');
-    return `${response.data.content} - ${response.data.author}`;
-  } catch (error) {
-    console.error('Error fetching quote in English:', error);
-    return 'Could not fetch quote at this time. Please try again later.';
-  }
-};
+// // Получение цитаты на английском языке
+// const getQuoteInEnglish = async () => {
+//   try {
+//     const response = await axios.get('https://api.quotable.io/random');
+//     return `${response.data.content} - ${response.data.author}`;
+//   } catch (error) {
+//     console.error('Error fetching quote in English:', error);
+//     return 'Could not fetch quote at this time. Please try again later.';
+//   }
+// };
 
 // Получение цитаты на русском языке
 const getQuoteInRussian = async () => {
@@ -30,4 +30,4 @@ const getQuoteInRussian = async () => {
   }
 };
 
-module.exports = { getQuoteInEnglish, getQuoteInRussian };
+module.exports = { getQuoteInRussian };

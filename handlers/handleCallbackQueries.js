@@ -1,4 +1,5 @@
 const { setCommands } = require('./setCommands');
+const { formatDate } = require('../utils/monthNames');
 const db = require('../utils/dbPostgres'); // Используйте PostgreSQL
 
 let categories = ['💼 Работа', '🏠 Личное', '💪 Здоровье'];
@@ -8,7 +9,7 @@ const handleCallbackQueries = async (ctx) => {
     const data = ctx.callbackQuery.data;
 
     if (data === 'create_entry') {
-      await ctx.reply('Выберите нужную страницу:', {
+      await ctx.reply('Выберите нужную страницу и запишите свои планы или цели:', {
         reply_markup: {
           inline_keyboard: categories.map(category => [{ text: category, callback_data: `category_${category}` }])
         }
@@ -40,7 +41,7 @@ const handleCallbackQueries = async (ctx) => {
           ctx.reply('Ваш дневник пуст.');
         } else {
           const entries = res.rows.map((row, index) => ({
-            text: `${index + 1}. ${row.text} (${row.category}, Запись была сделана: ${row.date})`,
+            text: `${index + 1}. ${row.text} (${row.category}, ⏳ ${formatDate(row.date)})`,
             callback_data: `edit_${row.entry_id}`
           }));
           ctx.reply('Ваши записи:', {
