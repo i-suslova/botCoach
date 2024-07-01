@@ -27,5 +27,7 @@ yarn-error.log*
 start_postgresql.bat
 stop_postgresql.bat
 
+tablesSQL.sql
+
 # npm run start-db
 # npm run stop-db
